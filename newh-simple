@@ -1,0 +1,115 @@
+#!/bin/bash -e
+# newh-simple
+#* To start a new Haskell project in few seconds using:
+#     Build system:       stack  (ghc and cabal under the hood)
+#     Control version:    git
+#     Remember directory: cdargs (cdb)
+#     Editor:             emacs
+
+## Usage:
+#    newh-simple  NameOfTheNewHaskellProject
+
+## Features:
+#* Automatically update uppercase/lowercase of the name of the kata wherever is needed.
+#* Check after smashing an existent directory.
+#* Without arguments, it shows some help.
+
+# Please, set up the next variable as the project root:
+#PROJROOT="$HOME/git/GITHUB"
+PROJROOT=`pwd`
+
+# From now on, don't touch unless you know what are you doing.
+
+PROJ_U=`eval "echo ${1} | sed 's/^./\u&/'"`  # NameOfTheNewKata. First letter to uppercase
+PROJ_L=`eval "echo ${1} | sed 's/^./\l&/'"`  # NameOfTheNewKata. First letter to lowercase
+
+B="\033[1m"   # Making the text Bold using escaped control characters
+b="\033[0m"   # Reset the text to default
+
+function check()
+{
+if [ -z "$PROJ_L" ]           ; then  echo ; echo    "  usage:   $0 'NameOfTheNewHaskellProject'"      ; echo ; exit 1; fi
+if [ -d "$PROJROOT/$PROJ_L" ] ; then  echo ; echo -e "  New Haskell project ${B}$PROJ_L${b} already exists." ; echo ; exit 1; fi
+}
+
+function doit()
+{
+echo
+echo
+echo "*******************************************"
+echo -e "${B}$PROJ_L${b} is being prepared.  Your friends here are: ${B}stack${b}, ${B}git${b}, cdargs (${B}cdb${b}), ${B}emacs${b}"
+echo
+
+# Create, delete and update files:
+stack new "$PROJ_L" simple
+cd "$PROJ_L"
+stack build
+
+# git:
+cat > .gitignore << EOF
+*~
+*#
+.#*
+.cabal-sandbox
+cabal.sandbox.config
+.stack-work
+/**/dist/
+/**/TAGS
+EOF
+
+git init
+git add .gitignore *
+git status
+git commit -am "Create skeleton. Template: simple"
+
+echo
+echo "Current git log:"
+git log --graph --pretty=format:'%Cred%h% %Cgreen (%cd)%Creset%Creset %s %C(yellow)%d%Creset' --abbrev-commit --date=short
+
+# cdargs:
+sed -i "1i $PROJ_L $PROJROOT/$PROJ_L" ~/.cdargs
+
+# rg:
+# It would be helpful if you write a bash command, make executable, and reached by PATH variable.
+# The suggested name is "rg" (Red-Green), with this two lines (discard the first 6 characters):
+#    #!/bin/bash
+#    stack build
+
+# Some help:
+echo
+echo -e "${B}git${b} is now particulary taking care of:"
+echo -e "    \"$PROJROOT/$PROJ_L${B}/src/Main.hs${b}\""
+echo
+echo -e "Use command ${B}emacs_$PROJ_L${b} to edit that."
+echo
+echo -e "Compile:           ${B}stack build${b}"
+echo -e "Execute:           ${B}stack exec $PROJ_L${b}"
+echo -e "Interactive shell: ${B}stack ghci${b}       -- and then,  ${B}:load src/Main.hs${b}"
+echo
+echo -e "\033[4mShortcuts${b} (auxiliary application ${B}cdargs${b}):"
+echo -e "${B}cdb${b}   # (hit 'Enter' twice)   to go to the program's main directory i.e.:"
+echo -e "    cd \"$PROJROOT/$PROJ_L\""
+echo
+
+# README.md    (Github)
+# this file is placed into the .stack-work hidden directory.
+# It would be helpful when you upload the repository to GitHub.
+echo "# $PROJ_U"                                         > "$PROJROOT/$PROJ_L/.stack-work/README.md"
+echo "$PROJ_U:"                                         >> "$PROJROOT/$PROJ_L/.stack-work/README.md"
+echo                                                    >> "$PROJROOT/$PROJ_L/.stack-work/README.md"
+echo "    git clone https://github.com/naldoco/$PROJ_L" >> "$PROJROOT/$PROJ_L/.stack-work/README.md"
+echo "    cd $PROJ_L"                                   >> "$PROJROOT/$PROJ_L/.stack-work/README.md"
+echo "    stack exec $PROJ_L"                           >> "$PROJROOT/$PROJ_L/.stack-work/README.md"
+
+# go start!
+cd "$PROJROOT/$PROJ_L"
+emacs "src/Main.hs" &
+
+echo "emacs  \\"                           > "$HOME/bin/emacs_$PROJ_L"
+echo "'$PROJROOT/$PROJ_L/src/Main.hs'  &" >> "$HOME/bin/emacs_$PROJ_L"
+chmod u+x                                    "$HOME/bin/emacs_$PROJ_L"
+}
+
+check
+cd "$PROJROOT"
+doit
